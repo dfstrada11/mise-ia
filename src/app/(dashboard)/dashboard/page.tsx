@@ -135,9 +135,21 @@ export default async function DashboardPage() {
 function ModuleCard({ href, active, icon, title, desc, badge }: {
   href: string; active: boolean; icon: string; title: string; desc: string; badge: string
 }) {
-  const Wrap = active ? Link : 'div'
+  if (active) {
+    return (
+      <Link href={href} className={`bg-[#111111] border rounded-2xl p-5 transition-all group border-[#1F1F1F] hover:border-red-600/30 hover:bg-[#141414] cursor-pointer`}>
+        <div className="flex items-start justify-between mb-3">
+          <span className="text-xl">{icon}</span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-600/15 text-red-400 border border-red-600/20">{badge}</span>
+        </div>
+        <h3 className="text-white text-sm font-semibold mb-1">{title}</h3>
+        <p className="text-[#5A5A5A] text-xs leading-relaxed">{desc}</p>
+        <p className="text-red-500 text-xs mt-3 font-medium">Abrir →</p>
+      </Link>
+    )
+  }
   return (
-    <Wrap {...(active ? { href } : {})}
+    <div
       className={`bg-[#111111] border rounded-2xl p-5 transition-all group ${
         active ? 'border-[#1F1F1F] hover:border-red-600/30 hover:bg-[#141414] cursor-pointer' : 'border-[#181818] opacity-50 cursor-default'
       }`}>
@@ -151,7 +163,6 @@ function ModuleCard({ href, active, icon, title, desc, badge }: {
       </div>
       <h3 className="text-white text-sm font-semibold mb-1">{title}</h3>
       <p className="text-[#5A5A5A] text-xs leading-relaxed">{desc}</p>
-      {active && <p className="text-red-500 text-xs mt-3 font-medium group-hover:gap-1 transition-all">Abrir →</p>}
-    </Wrap>
+    </div>
   )
 }

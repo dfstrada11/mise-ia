@@ -46,3 +46,12 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 99px; }
 }
+
+@media print {
+  .no-print { display: none !important; }
+  aside { display: none !important; }
+  nav { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .print-area { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+  @page { margin: 1.5cm; size: A4; }
+}

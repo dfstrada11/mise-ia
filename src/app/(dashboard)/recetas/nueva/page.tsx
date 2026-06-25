@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { IngredientesView } from './ingredientes-view'
+import { NuevaRecetaForm } from './form'
 
-export default async function IngredientesPage() {
+export default async function NuevaRecetaPage() {
   const supabase = await createClient()
   const { data: ingredientes } = await supabase
     .from('ingredientes')
     .select('id, nombre, unidad, precio_compra, cantidad_comprada, rendimiento')
     .order('nombre', { ascending: true })
 
-  return <IngredientesView ingredientes={ingredientes ?? []} />
+  return <NuevaRecetaForm ingredientesCatalogo={ingredientes ?? []} />
 }
