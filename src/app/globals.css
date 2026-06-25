@@ -8,53 +8,41 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
-  --color-input: var(--input);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
 }
 
-/* Mise AI — Tema culinario profesional (dark first) */
+/* Mise AI — Negro · Rojo · Blanco */
 :root {
-  --background: #0A0A08;
-  --foreground: #F5F0E8;
-  --card: #131310;
-  --card-foreground: #F5F0E8;
-  --popover: #131310;
-  --popover-foreground: #F5F0E8;
-  --primary: #D97706;
-  --primary-foreground: #0A0A08;
-  --secondary: #1C1C18;
-  --secondary-foreground: #F5F0E8;
-  --muted: #1C1C18;
-  --muted-foreground: #78716C;
-  --accent: #1C1C18;
-  --accent-foreground: #F5F0E8;
+  --background: #080808;
+  --foreground: #FFFFFF;
+  --card: #111111;
+  --card-foreground: #FFFFFF;
+  --muted: #1A1A1A;
+  --muted-foreground: #6B6B6B;
+  --primary: #E63946;
+  --primary-foreground: #FFFFFF;
+  --border: #1F1F1F;
+  --input: #1A1A1A;
   --destructive: #DC2626;
-  --border: #222218;
-  --input: #1C1C18;
-  --ring: #D97706;
-  --radius: 0.5rem;
+  --ring: #E63946;
+  --radius: 0.75rem;
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 99px; }
 }
