@@ -187,6 +187,9 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
   const [cantidad, setCantidad] = useState(ingrediente ? String(ingrediente.cantidad_comprada) : '')
   const [rend, setRend] = useState(ingrediente ? String(ingrediente.rendimiento) : '100')
   const [showMerma, setShowMerma] = useState(ingrediente ? ingrediente.rendimiento < 100 : false)
+  const [showCalc, setShowCalc] = useState(false)
+  const [calcComprado, setCalcComprado] = useState('')
+  const [calcDescarte, setCalcDescarte] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -203,6 +206,15 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
       setShowSugerencias(results.length > 0 && document.activeElement === nombreRef.current)
     }
   }, [nombre, ingrediente])
+
+  function calcularRendimiento(comprado: string, descarte: string) {
+    const c = parseFloat(comprado)
+    const d = parseFloat(descarte)
+    if (c > 0 && d >= 0 && d < c) {
+      const pct = Math.round(((c - d) / c) * 100)
+      setRend(String(pct))
+    }
+  }
 
   function seleccionarSugerencia(sug: IngredienteRef) {
     setNombre(sug.nombre)
@@ -345,6 +357,86 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
                     className="w-14 bg-[#111111] border border-[#1F1F1F] text-white text-sm text-center rounded-lg px-2 py-1.5 focus:outline-none" />
                   <span className="text-[#5A5A5A] text-sm">%</span>
                 </div>
+              </div>
+
+              {/* Calculadora de rendimiento */}
+              <div className="mt-3">
+                <button type="button" onClick={() => setShowCalc(!showCalc)}
+                  className="flex items-center gap-1.5 text-[#3A3A3A] hover:text-[#7A7A7A] text-[11px] transition-colors group">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    className={`w-3 h-3 transition-transform ${showCalc ? 'rotate-90' : ''}`}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                  {showCalc ? 'Cerrar calculadora' : '¿No sabes tu rendimiento? Calculalo aquí'}
+                </button>
+
+                {showCalc && (
+                  <div className="mt-3 bg-[#0A0A0A] border border-[#1F1F1F] rounded-2xl p-4 space-y-4">
+                    <div>
+                      <p className="text-white text-xs font-semibold mb-0.5">Calculadora de rendimiento</p>
+                      <p className="text-[#4A4A4A] text-[11px] leading-relaxed">
+                        Toma un producto, pésalo antes y después de limpiar. Ingresa los dos números y te calculamos el %.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-1.5 uppercase tracking-wider">
+                          Compré / recibí
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number" value={calcComprado} min="0" step="any" placeholder="500"
+                            onChange={e => { setCalcComprado(e.target.value); calcularRendimiento(e.target.value, calcDescarte) }}
+                            className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl pl-3 pr-10 py-2.5 text-sm focus:outline-none focus:border-[#333333] transition-all" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3A3A3A] text-[10px]">{unidad}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-1.5 uppercase tracking-wider">
+                          Tiré a la basura
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number" value={calcDescarte} min="0" step="any" placeholder="50"
+                            onChange={e => { setCalcDescarte(e.target.value); calcularRendimiento(calcComprado, e.target.value) }}
+                            className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl pl-3 pr-10 py-2.5 text-sm focus:outline-none focus:border-[#333333] transition-all" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3A3A3A] text-[10px]">{unidad}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resultado en vivo */}
+                    {(() => {
+                      const c = parseFloat(calcComprado)
+                      const d = parseFloat(calcDescarte)
+                      const valid = c > 0 && d >= 0 && d < c
+                      if (!valid) return (
+                        <p className="text-[#2A2A2A] text-[11px]">
+                          Ingresa ambos valores para ver el resultado
+                        </p>
+                      )
+                      const pct = Math.round(((c - d) / c) * 100)
+                      const aprovecha = c - d
+                      return (
+                        <div className="bg-[#111111] border border-[#1F1F1F] rounded-xl px-4 py-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-[#5A5A5A] text-[10px] uppercase tracking-wider">Rendimiento</p>
+                            <p className="text-white text-xs mt-0.5">
+                              Usas {aprovecha.toFixed(0)} de {c} {unidad}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-2xl font-bold font-mono ${pct >= 80 ? 'text-emerald-400' : pct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                              {pct}%
+                            </p>
+                            <p className="text-[#3A3A3A] text-[10px]">aplicado arriba</p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
 
               {rendNum < 100 && (
