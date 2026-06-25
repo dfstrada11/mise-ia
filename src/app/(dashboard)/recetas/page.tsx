@@ -20,20 +20,20 @@ export default async function RecetasPage() {
     .select(`
       id, nombre, categoria, porciones, food_cost_objetivo, created_at,
       receta_ingredientes (
-        cantidad,
-        ingredientes (precio_compra, cantidad_comprada, rendimiento)
+        cantidad, rendimiento,
+        ingredientes (precio_compra, cantidad_comprada)
       )
     `)
     .order('created_at', { ascending: false })
 
-  // Calcular costo por receta
+  // Calcular costo por receta usando el rendimiento por línea
   const recetasConCosto = (recetas ?? []).map(r => {
     const costoTotal = (r.receta_ingredientes ?? []).reduce((sum: number, ri: any) => {
       const ing = ri.ingredientes
       if (!ing) return sum
       const precioUnit = ing.precio_compra / ing.cantidad_comprada
-      const costoReal = precioUnit / (ing.rendimiento / 100)
-      return sum + (ri.cantidad * costoReal)
+      // Costo = cantidad bruta × precio unitario
+      return sum + (ri.cantidad * precioUnit)
     }, 0)
     const costoPorcion = costoTotal / r.porciones
     const precioSugerido = r.food_cost_objetivo > 0 ? costoPorcion / (r.food_cost_objetivo / 100) : 0

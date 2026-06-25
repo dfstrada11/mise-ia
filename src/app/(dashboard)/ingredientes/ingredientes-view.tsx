@@ -17,12 +17,6 @@ type Ingrediente = {
 const UNIDADES = ['kg', 'litro', 'gramo', 'ml', 'unidad', 'lb', 'oz', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'sobre', 'taza']
 
 function pu(i: Ingrediente) { return i.precio_compra / i.cantidad_comprada }
-function cr(i: Ingrediente) { return pu(i) / (i.rendimiento / 100) }
-function rColor(r: number) {
-  if (r >= 90) return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
-  if (r >= 70) return 'text-amber-400 bg-amber-400/10 border-amber-400/20'
-  return 'text-red-400 bg-red-400/10 border-red-400/20'
-}
 
 export function IngredientesView({ ingredientes }: { ingredientes: Ingrediente[] }) {
   const router = useRouter()
@@ -98,32 +92,21 @@ export function IngredientesView({ ingredientes }: { ingredientes: Ingrediente[]
           </div>
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_70px_110px_106px_110px_72px] gap-3 px-4 py-2 text-[10px] text-[#333333] uppercase tracking-wider font-semibold">
+            <div className="grid grid-cols-[1fr_70px_140px_72px] gap-3 px-4 py-2 text-[10px] text-[#333333] uppercase tracking-wider font-semibold">
               <span>Ingrediente</span>
               <span>Unidad</span>
-              <span className="text-right">Precio/unit</span>
-              <span className="text-center">Rendimiento</span>
-              <span className="text-right">Costo real</span>
+              <span className="text-right">Precio por unidad</span>
               <span></span>
             </div>
             <div className="space-y-1.5">
               {filtered.map(ing => {
                 const precioU = pu(ing)
-                const costoR = cr(ing)
                 return (
                   <div key={ing.id}
-                    className="grid grid-cols-[1fr_70px_110px_106px_110px_72px] gap-3 px-4 py-3.5 bg-[#0E0E0E] border border-[#181818] rounded-xl hover:border-[#252525] hover:bg-[#111111] transition-all items-center group">
+                    className="grid grid-cols-[1fr_70px_140px_72px] gap-3 px-4 py-3.5 bg-[#0E0E0E] border border-[#181818] rounded-xl hover:border-[#252525] hover:bg-[#111111] transition-all items-center group">
                     <p className="text-white text-sm font-medium truncate">{ing.nombre}</p>
                     <p className="text-[#5A5A5A] text-xs">{ing.unidad}</p>
-                    <p className="text-[#9A9A9A] text-xs text-right font-mono">${precioU.toFixed(3)}</p>
-                    <div className="flex justify-center">
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${rColor(ing.rendimiento)}`}>
-                        {ing.rendimiento}%
-                      </span>
-                    </div>
-                    <p className={`text-sm text-right font-mono font-semibold ${ing.rendimiento < 100 ? 'text-amber-400' : 'text-white'}`}>
-                      ${costoR.toFixed(3)}
-                    </p>
+                    <p className="text-white text-sm text-right font-mono font-semibold">${precioU.toFixed(3)}</p>
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEditar(ing)} className="p-1.5 text-[#3A3A3A] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all" title="Editar">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
@@ -137,9 +120,8 @@ export function IngredientesView({ ingredientes }: { ingredientes: Ingrediente[]
               })}
             </div>
             {filtered.length > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 mt-3 text-[11px] text-[#3A3A3A] border-t border-[#141414]">
-                <span>{filtered.length} ingredientes en catálogo</span>
-                <span>Rendimiento promedio: {Math.round(filtered.reduce((s, i) => s + i.rendimiento, 0) / filtered.length)}%</span>
+              <div className="px-4 py-3 mt-3 text-[11px] text-[#3A3A3A] border-t border-[#141414]">
+                <span>{filtered.length} ingredientes en catálogo · El rendimiento se configura por receta</span>
               </div>
             )}
           </div>

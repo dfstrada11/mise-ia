@@ -14,8 +14,8 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     .select(`
       id, nombre, categoria, porciones, procedimiento, food_cost_objetivo, created_at,
       receta_ingredientes (
-        cantidad,
-        ingredientes (id, nombre, unidad, precio_compra, cantidad_comprada, rendimiento)
+        cantidad, rendimiento,
+        ingredientes (id, nombre, unidad, precio_compra, cantidad_comprada)
       )
     `)
     .eq('id', id)
@@ -25,22 +25,31 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
 
   type RecetaIngrediente = {
     cantidad: number
+    rendimiento: number
     ingredientes: {
       id: string
       nombre: string
       unidad: string
       precio_compra: number
       cantidad_comprada: number
-      rendimiento: number
     }
   }
 
   const ingredientesConCosto = (receta.receta_ingredientes as unknown as RecetaIngrediente[]).map(ri => {
     const ing = ri.ingredientes
     const precioUnit = ing.precio_compra / ing.cantidad_comprada
-    const costoReal = precioUnit / (ing.rendimiento / 100)
-    const costoLinea = ri.cantidad * costoReal
-    return { ...ing, cantidad: ri.cantidad, precioUnit, costoReal, costoLinea }
+    // El costo es directo: cantidad bruta × precio unitario
+    // El rendimiento nos dice cuánto queda en el plato (informativo en la ficha)
+    const costoLinea = ri.cantidad * precioUnit
+    const cantidadAprovechable = ri.cantidad * (ri.rendimiento / 100)
+    return {
+      ...ing,
+      cantidad: ri.cantidad,
+      rendimiento: ri.rendimiento,
+      precioUnit,
+      costoLinea,
+      cantidadAprovechable,
+    }
   })
 
   const costoTotal = ingredientesConCosto.reduce((s, i) => s + i.costoLinea, 0)
@@ -51,7 +60,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="h-full overflow-y-auto">
-      {/* Toolbar (se oculta al imprimir) */}
+      {/* Toolbar */}
       <div className="no-print flex items-center justify-between px-8 py-5 border-b border-[#1F1F1F] bg-[#080808] sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <a href="/fichas"
@@ -68,10 +77,9 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
         <PrintButton />
       </div>
 
-      {/* Ficha técnica — contenido imprimible */}
       <div className="px-8 py-8 pb-24 md:pb-8 max-w-3xl">
         <div className="print-area bg-white rounded-2xl p-8 text-gray-900">
-          {/* Header ficha */}
+          {/* Header */}
           <div className="flex items-start justify-between pb-6 border-b border-gray-200 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -100,8 +108,9 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs text-gray-400 font-medium pb-2">Ingrediente</th>
-                  <th className="text-right text-xs text-gray-400 font-medium pb-2">Cantidad</th>
-                  <th className="text-right text-xs text-gray-400 font-medium pb-2">Rendimiento</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-2">Bruto</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-2">Rend.</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-2">En plato</th>
                   <th className="text-right text-xs text-gray-400 font-medium pb-2">Costo</th>
                 </tr>
               </thead>
@@ -111,6 +120,12 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
                     <td className="py-2 pr-4 font-medium text-gray-800">{ing.nombre}</td>
                     <td className="py-2 text-right text-gray-600">{ing.cantidad} {ing.unidad}</td>
                     <td className="py-2 text-right text-gray-500">{ing.rendimiento}%</td>
+                    <td className="py-2 text-right text-gray-500">
+                      {ing.rendimiento < 100
+                        ? `${ing.cantidadAprovechable.toFixed(3)} ${ing.unidad}`
+                        : '—'
+                      }
+                    </td>
                     <td className="py-2 text-right font-mono text-gray-800">${ing.costoLinea.toFixed(3)}</td>
                   </tr>
                 ))}
@@ -118,7 +133,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
             </table>
           </div>
 
-          {/* Resumen de costos */}
+          {/* Análisis de costos */}
           <div className="bg-gray-50 rounded-xl p-4 mb-6">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Análisis de costos</h2>
             <div className="grid grid-cols-3 gap-4">
@@ -147,7 +162,6 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Footer */}
           <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-300">Generado con mise ai · mise-ia.com</span>
             <span className="text-xs text-gray-300">Food cost objetivo: {receta.food_cost_objetivo}%</span>

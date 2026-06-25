@@ -9,7 +9,7 @@ export async function crearReceta(data: {
   porciones: number
   procedimiento: string
   food_cost_objetivo: number
-  ingredientes: { ingrediente_id: string; cantidad: number }[]
+  ingredientes: { ingrediente_id: string; cantidad: number; rendimiento: number }[]
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,6 +36,7 @@ export async function crearReceta(data: {
         receta_id: receta.id,
         ingrediente_id: i.ingrediente_id,
         cantidad: i.cantidad,
+        rendimiento: i.rendimiento,
       }))
     )
     if (ingError) {
