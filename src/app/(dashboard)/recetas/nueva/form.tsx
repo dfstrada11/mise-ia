@@ -161,6 +161,15 @@ export function NuevaRecetaForm({ ingredientesCatalogo }: { ingredientesCatalogo
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* Tip: un ingrediente, varias recetas */}
+                  <div className="bg-[#0A0A0A] border border-[#181818] rounded-xl p-3.5 mb-4">
+                    <p className="text-[#5A5A5A] text-[11px] leading-relaxed">
+                      <span className="text-white font-medium">¿Usas partes distintas del mismo producto en varias recetas?</span>
+                      {' '}No hay problema — pon solo la cantidad que uses en este plato.
+                      Ej: si el pollo lo divides en carne (0.7 kg → este plato) y huesos (0.3 kg → fondo),
+                      agrega cada receta con su cantidad correspondiente. El costo se distribuye solo.
+                    </p>
+                  </div>
                   {/* Header columnas */}
                   <div className="grid grid-cols-[1fr_140px_32px] gap-3 px-1 text-[10px] text-[#333333] uppercase tracking-wider mb-2">
                     <span>Ingrediente</span>
