@@ -14,7 +14,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     .select(`
       id, nombre, categoria, porciones, procedimiento, food_cost_objetivo, created_at,
       receta_ingredientes (
-        cantidad, rendimiento,
+        cantidad, unidad, rendimiento,
         ingredientes (id, nombre, unidad, precio_compra, cantidad_comprada)
       )
     `)
@@ -23,8 +23,17 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
 
   if (!receta) notFound()
 
+  const A_GRAMOS: Record<string, number> = {
+    'gramo': 1, 'gr': 1,
+    'oz': 28.3495,
+    'libra (lb)': 453.592, 'lb': 453.592,
+    'kg': 1000,
+    'ml': 1, 'litro': 1000,
+  }
+
   type RecetaIngrediente = {
     cantidad: number
+    unidad: string
     rendimiento: number
     ingredientes: {
       id: string
@@ -37,16 +46,25 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
 
   const ingredientesConCosto = (receta.receta_ingredientes as unknown as RecetaIngrediente[]).map(ri => {
     const ing = ri.ingredientes
-    const precioUnit = ing.precio_compra / ing.cantidad_comprada
-    // El costo es directo: cantidad bruta × precio unitario
-    // El rendimiento nos dice cuánto queda en el plato (informativo en la ficha)
-    const costoLinea = ri.cantidad * precioUnit
+    const precioUnitCompra = ing.precio_compra / ing.cantidad_comprada  // $/unidad_compra
+    const factorCompra = A_GRAMOS[ing.unidad]
+    const factorReceta = A_GRAMOS[ri.unidad ?? 'gr']
+    let costoLinea: number
+    if (factorCompra && factorReceta) {
+      // Convertir: cantidad en gr/oz → gramos → unidad de compra → precio
+      const cantGramos = ri.cantidad * factorReceta
+      const cantEnUnidadCompra = cantGramos / factorCompra
+      costoLinea = cantEnUnidadCompra * precioUnitCompra / (ri.rendimiento / 100)
+    } else {
+      costoLinea = ri.cantidad * precioUnitCompra / (ri.rendimiento / 100)
+    }
+    const unidadReceta = ri.unidad ?? ing.unidad
     const cantidadAprovechable = ri.cantidad * (ri.rendimiento / 100)
     return {
       ...ing,
       cantidad: ri.cantidad,
+      unidadReceta,
       rendimiento: ri.rendimiento,
-      precioUnit,
       costoLinea,
       cantidadAprovechable,
     }
@@ -118,11 +136,11 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
                 {ingredientesConCosto.map((ing, i) => (
                   <tr key={ing.id} className={i % 2 === 0 ? 'bg-gray-50/50' : ''}>
                     <td className="py-2 pr-4 font-medium text-gray-800">{ing.nombre}</td>
-                    <td className="py-2 text-right text-gray-600">{ing.cantidad} {ing.unidad}</td>
+                    <td className="py-2 text-right text-gray-600">{ing.cantidad} {ing.unidadReceta}</td>
                     <td className="py-2 text-right text-gray-500">{ing.rendimiento}%</td>
                     <td className="py-2 text-right text-gray-500">
                       {ing.rendimiento < 100
-                        ? `${ing.cantidadAprovechable.toFixed(3)} ${ing.unidad}`
+                        ? `${ing.cantidadAprovechable.toFixed(1)} ${ing.unidadReceta}`
                         : '—'
                       }
                     </td>

@@ -17,14 +17,42 @@ type Linea = {
   key: number
   ingrediente_id: string
   cantidad: string
+  unidad: string  // gr | oz — unidad usada en la receta
 }
 
 const CATEGORIAS = ['Entrada', 'Plato fuerte', 'Postre', 'Bebida', 'Snack', 'Salsa/Base', 'Otro']
 
-function costoLinea(ing: Ingrediente, cantidad: number) {
+// Factor de conversión a gramos para cada unidad de compra
+const A_GRAMOS: Record<string, number> = {
+  'gramo': 1, 'gr': 1,
+  'oz': 28.3495,
+  'libra (lb)': 453.592, 'lb': 453.592,
+  'kg': 1000,
+  'ml': 1, 'litro': 1000,
+}
+
+// Si el ingrediente tiene factor de peso conocido, convierte; si no, usa la unidad del ingrediente
+function precioPorGramo(ing: Ingrediente): number | null {
+  const factor = A_GRAMOS[ing.unidad]
+  if (!factor) return null  // unidad, pieza, caja — no convertible a gramos
+  return (ing.precio_compra / ing.cantidad_comprada) / factor
+}
+
+function costoLinea(ing: Ingrediente, cantidad: number, unidadReceta: string) {
+  const ppg = precioPorGramo(ing)
+  if (ppg !== null) {
+    // La cantidad está en gr u oz → convertir a gramos
+    const cantGramos = cantidad * (A_GRAMOS[unidadReceta] ?? 1)
+    return cantGramos * ppg / (ing.rendimiento / 100)
+  }
+  // Unidad no convertible: calcular directo en la unidad del ingrediente
   const precioUnit = ing.precio_compra / ing.cantidad_comprada
-  const costoReal = precioUnit / (ing.rendimiento / 100)
-  return cantidad * costoReal
+  return cantidad * precioUnit / (ing.rendimiento / 100)
+}
+
+// ¿Este ingrediente soporta selección gr/oz? Solo si tiene factor de peso
+function esConvertible(ing: Ingrediente) {
+  return ing.unidad in A_GRAMOS
 }
 
 export function NuevaRecetaForm({
@@ -44,12 +72,12 @@ export function NuevaRecetaForm({
   const [porciones, setPorciones] = useState('1')
   const [procedimiento, setProcedimiento] = useState('')
   const [foodCostObj, setFoodCostObj] = useState(String(foodCostDefault))
-  const [lineas, setLineas] = useState<Linea[]>([{ key: 0, ingrediente_id: '', cantidad: '' }])
+  const [lineas, setLineas] = useState<Linea[]>([{ key: 0, ingrediente_id: '', cantidad: '', unidad: 'gr' }])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function addLinea() {
-    setLineas(prev => [...prev, { key: Date.now(), ingrediente_id: '', cantidad: '' }])
+    setLineas(prev => [...prev, { key: Date.now(), ingrediente_id: '', cantidad: '', unidad: 'gr' }])
   }
 
   function removeLinea(key: number) {
@@ -69,7 +97,7 @@ export function NuevaRecetaForm({
   const costoIngredientes = lineasValidas.reduce((sum, l) => {
     const ing = ingredientesCatalogo.find(i => i.id === l.ingrediente_id)
     if (!ing) return sum
-    return sum + costoLinea(ing, parseFloat(l.cantidad))
+    return sum + costoLinea(ing, parseFloat(l.cantidad), l.unidad)
   }, 0)
 
   const costoTotal = costoIngredientes  // base para el panel
@@ -94,6 +122,7 @@ export function NuevaRecetaForm({
       ingredientes: lineasValidas.map(l => ({
         ingrediente_id: l.ingrediente_id,
         cantidad: parseFloat(l.cantidad),
+        unidad: l.unidad,
         rendimiento: ingredientesCatalogo.find(i => i.id === l.ingrediente_id)?.rendimiento ?? 100,
       })),
     })
@@ -175,7 +204,9 @@ export function NuevaRecetaForm({
                   {lineas.map((linea) => {
                     const ing = ingredientesCatalogo.find(i => i.id === linea.ingrediente_id)
                     const cantNum = parseFloat(linea.cantidad) || 0
-                    const costo = ing && cantNum > 0 ? costoLinea(ing, cantNum) : null
+                    const costo = ing && cantNum > 0 ? costoLinea(ing, cantNum, linea.unidad) : null
+
+                    const convertible = ing ? esConvertible(ing) : true
 
                     return (
                       <div key={linea.key} className="flex items-center gap-3">
@@ -188,14 +219,29 @@ export function NuevaRecetaForm({
                           ))}
                         </select>
 
-                        <div className="relative w-36">
+                        {/* Cantidad + unidad receta */}
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <input type="number" value={linea.cantidad}
                             onChange={e => updateLinea(linea.key, 'cantidad', e.target.value)}
-                            placeholder="Cantidad"
-                            step="0.001" min="0"
-                            className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl pl-3 pr-10 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
-                          {ing && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3A3A3A] text-xs">{ing.unidad}</span>
+                            placeholder="0"
+                            step="1" min="0"
+                            className="w-24 bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
+                          {convertible ? (
+                            <div className="flex rounded-xl border border-[#1F1F1F] overflow-hidden">
+                              {(['gr', 'oz'] as const).map(u => (
+                                <button key={u} type="button"
+                                  onClick={() => updateLinea(linea.key, 'unidad', u)}
+                                  className={`px-2.5 py-3 text-xs font-semibold transition-colors ${
+                                    linea.unidad === u
+                                      ? 'bg-red-600 text-white'
+                                      : 'bg-[#111111] text-[#3A3A3A] hover:text-[#7A7A7A]'
+                                  }`}>
+                                  {u}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[#3A3A3A] text-xs w-10 text-center">{ing?.unidad ?? ''}</span>
                           )}
                         </div>
 
@@ -312,7 +358,7 @@ export function NuevaRecetaForm({
                 <div className="space-y-2.5">
                   {lineasValidas.map(l => {
                     const ing = ingredientesCatalogo.find(i => i.id === l.ingrediente_id)!
-                    const costo = costoLinea(ing, parseFloat(l.cantidad))
+                    const costo = costoLinea(ing, parseFloat(l.cantidad), l.unidad)
                     const pct = costoTotal > 0 ? (costo / costoTotal) * 100 : 0
                     return (
                       <div key={l.key}>

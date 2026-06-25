@@ -14,7 +14,7 @@ type Ingrediente = {
   rendimiento: number
 }
 
-const UNIDADES = ['gramo', 'oz', 'libra (lb)', 'kg', 'ml', 'litro', 'unidad', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'sobre', 'taza', 'docena']
+const UNIDADES = ['libra (lb)', 'kg', 'litro', 'unidad', 'gramo', 'oz', 'ml', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'sobre', 'taza', 'docena']
 
 function pu(i: Ingrediente) { return i.precio_compra / i.cantidad_comprada }
 
@@ -182,7 +182,7 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
   onSuccess: () => void
 }) {
   const [nombre, setNombre] = useState(ingrediente?.nombre ?? '')
-  const [unidad, setUnidad] = useState(ingrediente?.unidad ?? 'gramo')
+  const [unidad, setUnidad] = useState(ingrediente?.unidad ?? 'libra (lb)')
   const [precio, setPrecio] = useState(ingrediente ? String(ingrediente.precio_compra) : '')
   const [cantidad, setCantidad] = useState(ingrediente ? String(ingrediente.cantidad_comprada) : '')
   const [rend, setRend] = useState(ingrediente ? String(ingrediente.rendimiento) : '100')
