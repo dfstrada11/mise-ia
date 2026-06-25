@@ -14,7 +14,7 @@ type Ingrediente = {
   rendimiento: number
 }
 
-const UNIDADES = ['kg', 'litro', 'gramo', 'ml', 'unidad', 'lb', 'oz', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'sobre', 'taza']
+const UNIDADES = ['gramo', 'oz', 'libra (lb)', 'kg', 'ml', 'litro', 'unidad', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'sobre', 'taza', 'docena']
 
 function pu(i: Ingrediente) { return i.precio_compra / i.cantidad_comprada }
 
@@ -92,21 +92,40 @@ export function IngredientesView({ ingredientes }: { ingredientes: Ingrediente[]
           </div>
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_70px_140px_72px] gap-3 px-4 py-2 text-[10px] text-[#333333] uppercase tracking-wider font-semibold">
+            <div className="grid grid-cols-[1fr_70px_110px_100px_72px] gap-3 px-4 py-2 text-[10px] text-[#333333] uppercase tracking-wider font-semibold">
               <span>Ingrediente</span>
               <span>Unidad</span>
-              <span className="text-right">Precio por unidad</span>
+              <span className="text-right">Precio/unid</span>
+              <span className="text-center">Aprovechable</span>
               <span></span>
             </div>
             <div className="space-y-1.5">
               {filtered.map(ing => {
                 const precioU = pu(ing)
+                const costoReal = precioU / (ing.rendimiento / 100)
+                const hayMerma = ing.rendimiento < 100
                 return (
                   <div key={ing.id}
-                    className="grid grid-cols-[1fr_70px_140px_72px] gap-3 px-4 py-3.5 bg-[#0E0E0E] border border-[#181818] rounded-xl hover:border-[#252525] hover:bg-[#111111] transition-all items-center group">
-                    <p className="text-white text-sm font-medium truncate">{ing.nombre}</p>
+                    className="grid grid-cols-[1fr_70px_110px_100px_72px] gap-3 px-4 py-3.5 bg-[#0E0E0E] border border-[#181818] rounded-xl hover:border-[#252525] hover:bg-[#111111] transition-all items-center group">
+                    <div>
+                      <p className="text-white text-sm font-medium truncate">{ing.nombre}</p>
+                      {hayMerma && (
+                        <p className="text-[#3A3A3A] text-[10px]">
+                          {ing.rendimiento}% aprovechable · {100 - ing.rendimiento}% descarte
+                        </p>
+                      )}
+                    </div>
                     <p className="text-[#5A5A5A] text-xs">{ing.unidad}</p>
-                    <p className="text-white text-sm text-right font-mono font-semibold">${precioU.toFixed(3)}</p>
+                    <p className="text-[#9A9A9A] text-xs text-right font-mono">${precioU.toFixed(3)}</p>
+                    <div className="flex justify-center">
+                      {hayMerma ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border text-amber-400 bg-amber-400/10 border-amber-400/20">
+                          ${costoReal.toFixed(3)}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-emerald-400/60">100%</span>
+                      )}
+                    </div>
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEditar(ing)} className="p-1.5 text-[#3A3A3A] hover:text-white hover:bg-[#1A1A1A] rounded-lg transition-all" title="Editar">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
@@ -163,7 +182,7 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
   onSuccess: () => void
 }) {
   const [nombre, setNombre] = useState(ingrediente?.nombre ?? '')
-  const [unidad, setUnidad] = useState(ingrediente?.unidad ?? 'kg')
+  const [unidad, setUnidad] = useState(ingrediente?.unidad ?? 'gramo')
   const [precio, setPrecio] = useState(ingrediente ? String(ingrediente.precio_compra) : '')
   const [cantidad, setCantidad] = useState(ingrediente ? String(ingrediente.cantidad_comprada) : '')
   const [rend, setRend] = useState(ingrediente ? String(ingrediente.rendimiento) : '100')
@@ -296,39 +315,58 @@ function IngredienteSlideOver({ ingrediente, onClose, onSuccess }: {
               )}
             </div>
 
-            {/* Merma — oculta por defecto */}
+            {/* Rendimiento — siempre visible, lenguaje simple */}
             <div>
-              <button type="button" onClick={() => setShowMerma(!showMerma)}
-                className="flex items-center gap-2 text-[#3A3A3A] hover:text-white text-xs transition-colors">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                  className={`w-3.5 h-3.5 transition-transform ${showMerma ? 'rotate-90' : ''}`}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-                {rendNum < 100 ? `Merma: ${100 - rendNum}% de descarte` : 'Ajustar merma (opcional)'}
-              </button>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[10px] text-[#5A5A5A] font-semibold uppercase tracking-wider">
+                  ¿Cuánto de este ingrediente termina en el plato?
+                </label>
+                <span className={`text-xs font-bold font-mono ${
+                  rendNum >= 90 ? 'text-emerald-400' : rendNum >= 70 ? 'text-amber-400' : 'text-red-400'
+                }`}>{rendNum}%</span>
+              </div>
 
-              {showMerma && (
-                <div className="mt-3 bg-[#0D0D0D] border border-[#181818] rounded-xl p-4 space-y-3">
-                  <p className="text-[#4A4A4A] text-xs leading-relaxed">
-                    ¿Qué porcentaje de este ingrediente termina en la basura?
-                    Si los "sobrantes" los usas en otra receta, deja 100%.
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <input type="range" min="1" max="100" value={rendNum}
-                      onChange={e => setRend(e.target.value)}
-                      className="flex-1 h-1.5 accent-red-600 cursor-pointer" />
-                    <div className="flex items-center gap-1">
-                      <input type="number" value={rend}
-                        onChange={e => setRend(String(Math.min(100, Math.max(1, parseInt(e.target.value) || 1))))}
-                        min="1" max="100"
-                        className="w-14 bg-[#111111] border border-[#1F1F1F] text-white text-sm text-center rounded-lg px-2 py-1.5 focus:outline-none" />
-                      <span className="text-[#5A5A5A] text-sm">%</span>
-                    </div>
+              {/* Contexto simple */}
+              <p className="text-[#333333] text-[11px] mb-3 leading-relaxed">
+                {rendNum === 100
+                  ? 'Todo lo que compras va al plato — sin descarte.'
+                  : `De cada ${unidad} que compras, solo usas el ${rendNum}% — el ${100 - rendNum}% restante es descarte (cáscaras, huesos inútiles, etc).`
+                }
+              </p>
+
+              <div className="flex items-center gap-3">
+                <input type="range" min="1" max="100" value={rendNum}
+                  onChange={e => setRend(e.target.value)}
+                  className="flex-1 h-1.5 accent-red-600 cursor-pointer" />
+                <div className="flex items-center gap-1">
+                  <input type="number" value={rend}
+                    onChange={e => setRend(String(Math.min(100, Math.max(1, parseInt(e.target.value) || 1))))}
+                    min="1" max="100"
+                    className="w-14 bg-[#111111] border border-[#1F1F1F] text-white text-sm text-center rounded-lg px-2 py-1.5 focus:outline-none" />
+                  <span className="text-[#5A5A5A] text-sm">%</span>
+                </div>
+              </div>
+
+              {rendNum < 100 && (
+                <div className="mt-3 bg-[#0D0D0D] border border-[#181818] rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[#5A5A5A] text-[10px]">Costo real (con descarte incluido)</p>
+                    {cantidadNum > 0 && precioUnit && (
+                      <p className="text-white text-xs mt-0.5">
+                        Pagas ${precioUnit.toFixed(3)}/{unidad} pero usas el {rendNum}%
+                      </p>
+                    )}
                   </div>
-                  {rendNum < 100 && sugerenciaActiva?.subproducto && (
-                    <p className="text-amber-500/70 text-[11px]">💡 {sugerenciaActiva.subproducto}</p>
+                  {costoReal && (
+                    <p className="text-amber-400 font-bold font-mono text-base">${costoReal.toFixed(3)}</p>
                   )}
                 </div>
+              )}
+
+              {rendNum < 100 && sugerenciaActiva?.subproducto && (
+                <p className="text-amber-500/60 text-[11px] mt-2 leading-relaxed">
+                  💡 {sugerenciaActiva.subproducto}
+                </p>
               )}
             </div>
 

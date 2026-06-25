@@ -27,13 +27,23 @@ function costoLinea(ing: Ingrediente, cantidad: number) {
   return cantidad * costoReal
 }
 
-export function NuevaRecetaForm({ ingredientesCatalogo }: { ingredientesCatalogo: Ingrediente[] }) {
+export function NuevaRecetaForm({
+  ingredientesCatalogo,
+  costoMOPorPlato = 0,
+  foodCostDefault = 30,
+  moneda = 'USD',
+}: {
+  ingredientesCatalogo: Ingrediente[]
+  costoMOPorPlato?: number
+  foodCostDefault?: number
+  moneda?: string
+}) {
   const router = useRouter()
   const [nombre, setNombre] = useState('')
   const [categoria, setCategoria] = useState('Plato fuerte')
   const [porciones, setPorciones] = useState('1')
   const [procedimiento, setProcedimiento] = useState('')
-  const [foodCostObj, setFoodCostObj] = useState('30')
+  const [foodCostObj, setFoodCostObj] = useState(String(foodCostDefault))
   const [lineas, setLineas] = useState<Linea[]>([{ key: 0, ingrediente_id: '', cantidad: '' }])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,17 +62,22 @@ export function NuevaRecetaForm({ ingredientesCatalogo }: { ingredientesCatalogo
 
   const porcionesNum = parseInt(porciones) || 1
   const foodCostObjNum = parseFloat(foodCostObj) || 30
+  const currSymbol = moneda === 'GTQ' ? 'Q' : moneda === 'HNL' ? 'L' : moneda === 'CRC' ? '₡' : '$'
 
   const lineasValidas = lineas.filter(l => l.ingrediente_id && l.cantidad && parseFloat(l.cantidad) > 0)
 
-  const costoTotal = lineasValidas.reduce((sum, l) => {
+  const costoIngredientes = lineasValidas.reduce((sum, l) => {
     const ing = ingredientesCatalogo.find(i => i.id === l.ingrediente_id)
     if (!ing) return sum
     return sum + costoLinea(ing, parseFloat(l.cantidad))
   }, 0)
 
+  const costoTotal = costoIngredientes  // base para el panel
+  const costoTotalConMO = costoTotal + (costoMOPorPlato * porcionesNum)
   const costoPorcion = costoTotal / porcionesNum
+  const costoPorcionConMO = costoPorcion + costoMOPorPlato
   const precioSugerido = foodCostObjNum > 0 ? costoPorcion / (foodCostObjNum / 100) : 0
+  const precioSugeridoConMO = foodCostObjNum > 0 ? costoPorcionConMO / (foodCostObjNum / 100) : 0
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -257,21 +272,34 @@ export function NuevaRecetaForm({ ingredientesCatalogo }: { ingredientesCatalogo
               <div className="absolute -top-4 -right-4 w-20 h-20 bg-red-500/30 rounded-full" />
               <div className="absolute -bottom-6 -right-6 w-28 h-28 bg-red-700/40 rounded-full" />
               <div className="relative z-10">
-                <p className="text-red-200 text-xs font-semibold uppercase tracking-wider mb-4">En tiempo real</p>
-                <div className="space-y-3">
+                <p className="text-red-200 text-xs font-semibold uppercase tracking-wider mb-4">Costo real por porción</p>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-red-200 text-sm">Costo total:</span>
-                    <span className="text-white text-sm font-mono font-bold">${costoTotal.toFixed(2)}</span>
+                    <span className="text-red-200 text-sm">Ingredientes:</span>
+                    <span className="text-white text-sm font-mono">{currSymbol}{costoPorcion.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-red-500/40">
-                    <span className="text-red-100 text-sm font-semibold">Por porción:</span>
-                    <span className="text-white text-xl font-mono font-bold">${costoPorcion.toFixed(2)}</span>
+                  {costoMOPorPlato > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-red-200 text-sm">Mano de obra:</span>
+                      <span className="text-white text-sm font-mono">{currSymbol}{costoMOPorPlato.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2.5 border-t border-red-500/40">
+                    <span className="text-red-100 text-sm font-semibold">Costo total:</span>
+                    <span className="text-white text-xl font-mono font-bold">
+                      {currSymbol}{(costoMOPorPlato > 0 ? costoPorcionConMO : costoPorcion).toFixed(2)}
+                    </span>
                   </div>
                 </div>
                 {precioSugerido > 0 && (
                   <div className="mt-4 pt-4 border-t border-red-500/40">
                     <p className="text-red-200 text-[11px] uppercase tracking-wider mb-1">Precio de venta sugerido</p>
-                    <p className="text-white text-3xl font-bold font-mono">${precioSugerido.toFixed(2)}</p>
+                    <p className="text-white text-3xl font-bold font-mono">
+                      {currSymbol}{(costoMOPorPlato > 0 ? precioSugeridoConMO : precioSugerido).toFixed(2)}
+                    </p>
+                    {costoMOPorPlato > 0 && (
+                      <p className="text-red-300/60 text-[10px] mt-1">Incluye ingredientes + mano de obra</p>
+                    )}
                   </div>
                 )}
               </div>
