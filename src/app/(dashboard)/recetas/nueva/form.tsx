@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { crearReceta } from '../actions'
+import { crearIngredienteRapido } from '../../ingredientes/actions'
+import { buscarIngredienteRef, type IngredienteRef } from '@/lib/rendimientos-catalogo'
 
 type Ingrediente = {
   id: string
@@ -67,6 +69,7 @@ export function NuevaRecetaForm({
   moneda?: string
 }) {
   const router = useRouter()
+  const [catalogo, setCatalogo] = useState<Ingrediente[]>(ingredientesCatalogo)
   const [nombre, setNombre] = useState('')
   const [categoria, setCategoria] = useState('Plato fuerte')
   const [porciones, setPorciones] = useState('1')
@@ -75,6 +78,8 @@ export function NuevaRecetaForm({
   const [lineas, setLineas] = useState<Linea[]>([{ key: 0, ingrediente_id: '', cantidad: '', unidad: 'gr' }])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickAddLineaKey, setQuickAddLineaKey] = useState<number | null>(null)
 
   function addLinea() {
     setLineas(prev => [...prev, { key: Date.now(), ingrediente_id: '', cantidad: '', unidad: 'gr' }])
@@ -95,7 +100,7 @@ export function NuevaRecetaForm({
   const lineasValidas = lineas.filter(l => l.ingrediente_id && l.cantidad && parseFloat(l.cantidad) > 0)
 
   const costoIngredientes = lineasValidas.reduce((sum, l) => {
-    const ing = ingredientesCatalogo.find(i => i.id === l.ingrediente_id)
+    const ing = catalogo.find(i => i.id === l.ingrediente_id)
     if (!ing) return sum
     return sum + costoLinea(ing, parseFloat(l.cantidad), l.unidad)
   }, 0)
@@ -123,7 +128,7 @@ export function NuevaRecetaForm({
         ingrediente_id: l.ingrediente_id,
         cantidad: parseFloat(l.cantidad),
         unidad: l.unidad,
-        rendimiento: ingredientesCatalogo.find(i => i.id === l.ingrediente_id)?.rendimiento ?? 100,
+        rendimiento: catalogo.find(i => i.id === l.ingrediente_id)?.rendimiento ?? 100,
       })),
     })
 
@@ -179,10 +184,15 @@ export function NuevaRecetaForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-2 uppercase tracking-wider">Porciones que rinde</label>
+                  <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-2 uppercase tracking-wider">¿Para cuántos platos?</label>
                   <input type="number" value={porciones} onChange={e => setPorciones(e.target.value)}
                     min="1" required
                     className="w-full bg-[#111111] border border-[#1F1F1F] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
+                  <p className="text-[#2A2A2A] text-[10px] mt-1.5">
+                    {porcionesNum === 1
+                      ? 'Receta individual — para 1 plato'
+                      : `Esta receta alcanza para ${porcionesNum} platos — el costo se divide entre ellos`}
+                  </p>
                 </div>
               </div>
             </div>
@@ -202,7 +212,7 @@ export function NuevaRecetaForm({
               ) : (
                 <div className="space-y-2.5">
                   {lineas.map((linea) => {
-                    const ing = ingredientesCatalogo.find(i => i.id === linea.ingrediente_id)
+                    const ing = catalogo.find(i => i.id === linea.ingrediente_id)
                     const cantNum = parseFloat(linea.cantidad) || 0
                     const costo = ing && cantNum > 0 ? costoLinea(ing, cantNum, linea.unidad) : null
 
@@ -263,13 +273,23 @@ export function NuevaRecetaForm({
                     )
                   })}
 
-                  <button type="button" onClick={addLinea}
-                    className="flex items-center gap-2 text-[#4A4A4A] hover:text-white text-xs mt-1 px-1 py-2 transition-colors">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Agregar otro ingrediente
-                  </button>
+                  <div className="flex items-center justify-between mt-1">
+                    <button type="button" onClick={addLinea}
+                      className="flex items-center gap-2 text-[#4A4A4A] hover:text-white text-xs px-1 py-2 transition-colors">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Agregar otro ingrediente
+                    </button>
+                    <button type="button"
+                      onClick={() => { setQuickAddLineaKey(null); setShowQuickAdd(true) }}
+                      className="flex items-center gap-1.5 text-[#3A3A3A] hover:text-red-400 text-xs px-1 py-2 transition-colors">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Nuevo ingrediente al catálogo
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -357,7 +377,7 @@ export function NuevaRecetaForm({
                 <p className="text-[10px] text-[#3A3A3A] uppercase tracking-wider font-semibold mb-3">Desglose por ingrediente</p>
                 <div className="space-y-2.5">
                   {lineasValidas.map(l => {
-                    const ing = ingredientesCatalogo.find(i => i.id === l.ingrediente_id)!
+                    const ing = catalogo.find(i => i.id === l.ingrediente_id)!
                     const costo = costoLinea(ing, parseFloat(l.cantidad), l.unidad)
                     const pct = costoTotal > 0 ? (costo / costoTotal) * 100 : 0
                     return (
@@ -378,6 +398,154 @@ export function NuevaRecetaForm({
           </div>
         </div>
       </form>
+
+      {/* Modal: añadir ingrediente rápido sin salir del form */}
+      {showQuickAdd && (
+        <QuickAddIngredienteModal
+          onClose={() => setShowQuickAdd(false)}
+          onSuccess={(ing) => {
+            setCatalogo(prev => [...prev, ing])
+            // Si había una línea vacía, auto-seleccionar; si no, agregar línea nueva
+            const lineaVacia = lineas.find(l => !l.ingrediente_id)
+            if (lineaVacia) {
+              updateLinea(lineaVacia.key, 'ingrediente_id', ing.id)
+            } else {
+              const newKey = Date.now()
+              setLineas(prev => [...prev, { key: newKey, ingrediente_id: ing.id, cantidad: '', unidad: 'gr' }])
+            }
+            setShowQuickAdd(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── MODAL QUICK-ADD ──────────────────────────────────────────────────────────
+
+const UNIDADES_COMPRA = ['libra (lb)', 'kg', 'litro', 'unidad', 'gramo', 'oz', 'ml', 'pieza', 'caja', 'bolsa', 'lata', 'manojo', 'docena']
+
+function QuickAddIngredienteModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void
+  onSuccess: (ing: { id: string; nombre: string; unidad: string; precio_compra: number; cantidad_comprada: number; rendimiento: number }) => void
+}) {
+  const [nombre, setNombre] = useState('')
+  const [unidad, setUnidad] = useState('libra (lb)')
+  const [precio, setPrecio] = useState('')
+  const [cantidad, setCantidad] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Autocomplete
+  const [sugerencias, setSugerencias] = useState<IngredienteRef[]>([])
+  const [showSug, setShowSug] = useState(false)
+
+  function onNombreChange(v: string) {
+    setNombre(v)
+    const r = buscarIngredienteRef(v)
+    setSugerencias(r)
+    setShowSug(r.length > 0)
+  }
+
+  function seleccionar(sug: IngredienteRef) {
+    setNombre(sug.nombre)
+    setUnidad(sug.unidad)
+    setShowSug(false)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const p = parseFloat(precio)
+    const c = parseFloat(cantidad)
+    if (!nombre || !p || !c) return
+    setLoading(true)
+    const result = await crearIngredienteRapido({
+      nombre, unidad, precio_compra: p, cantidad_comprada: c, rendimiento: 100,
+    })
+    setLoading(false)
+    if ('error' in result && result.error) { setError(result.error); return }
+    if ('ingrediente' in result && result.ingrediente) onSuccess(result.ingrediente)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-[#0E0E0E] border border-[#1F1F1F] rounded-2xl shadow-2xl p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-white font-semibold text-sm">Nuevo ingrediente</h3>
+            <p className="text-[#3A3A3A] text-xs mt-0.5">Se guardará en tu catálogo y se agregará a la receta</p>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center text-[#3A3A3A] hover:text-white hover:bg-[#1A1A1A] rounded-xl transition-all">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Nombre con autocomplete */}
+          <div className="relative">
+            <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-1.5 uppercase tracking-wider">Ingrediente</label>
+            <input
+              value={nombre} onChange={e => onNombreChange(e.target.value)}
+              onBlur={() => setTimeout(() => setShowSug(false), 150)}
+              onFocus={() => sugerencias.length > 0 && setShowSug(true)}
+              placeholder="Ej: Pollo entero..." autoFocus required
+              className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
+            {showSug && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#111111] border border-[#1F1F1F] rounded-xl overflow-hidden shadow-2xl">
+                {sugerencias.map(s => (
+                  <button key={s.nombre} type="button" onMouseDown={() => seleccionar(s)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#1A1A1A] text-left transition-colors border-t border-[#181818] first:border-0">
+                    <span className="text-white text-sm">{s.nombre}</span>
+                    <span className="text-[#3A3A3A] text-xs">{s.unidad}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Unidad de compra */}
+          <div>
+            <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-1.5 uppercase tracking-wider">Unidad de compra</label>
+            <select value={unidad} onChange={e => setUnidad(e.target.value)}
+              className="w-full bg-[#111111] border border-[#1F1F1F] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all">
+              {UNIDADES_COMPRA.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+
+          {/* Precio */}
+          <div>
+            <label className="block text-[10px] text-[#5A5A5A] font-semibold mb-1.5 uppercase tracking-wider">¿Cuánto pagaste?</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#3A3A3A] text-sm">$</span>
+                <input type="number" value={precio} onChange={e => setPrecio(e.target.value)}
+                  placeholder="0.00" step="0.01" min="0.01" required
+                  className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl pl-7 pr-4 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
+              </div>
+              <div className="relative">
+                <input type="number" value={cantidad} onChange={e => setCantidad(e.target.value)}
+                  placeholder="1" step="0.001" min="0.001" required
+                  className="w-full bg-[#111111] border border-[#1F1F1F] text-white placeholder-[#2A2A2A] rounded-xl pl-3 pr-14 py-3 text-sm focus:outline-none focus:border-red-600/50 transition-all" />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3A3A3A] text-xs">{unidad}</span>
+              </div>
+            </div>
+          </div>
+
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+
+          <button type="submit" disabled={loading || !nombre || !precio || !cantidad}
+            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl transition-colors">
+            {loading ? 'Guardando...' : 'Guardar y agregar a la receta'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

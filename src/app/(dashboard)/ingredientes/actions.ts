@@ -43,6 +43,24 @@ export async function editarIngrediente(id: string, formData: FormData) {
   return { success: true }
 }
 
+// Versión sin FormData que devuelve el ingrediente creado — usada desde el form de recetas
+export async function crearIngredienteRapido(data: {
+  nombre: string; unidad: string; precio_compra: number; cantidad_comprada: number; rendimiento: number
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: ing, error } = await supabase.from('ingredientes')
+    .insert({ user_id: user.id, ...data })
+    .select('id, nombre, unidad, precio_compra, cantidad_comprada, rendimiento')
+    .single()
+
+  if (error) return { error: error.message }
+  revalidatePath('/ingredientes')
+  return { success: true, ingrediente: ing }
+}
+
 export async function eliminarIngrediente(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
